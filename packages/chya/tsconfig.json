@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "outDir": "dist",
+        "declaration": true,
+        "declarationDir": "dist",
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "target": "ES6",
+        "module": "ES2020",
+        "strict": true,
+        "esModuleInterop": true
+    },
+    "include": [
+        "src"
+    ]
+}

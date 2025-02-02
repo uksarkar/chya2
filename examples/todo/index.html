@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + TS</title>
+</head>
+
+<body>
+  <div class="mx-auto max-w-[50vw] p-20 m-20 border border-gray-500 rounded-md">
+    <div class="flex flex-col gap-5" x-app="todoForm" x-state="{text: ''}">
+      <label for="">Todo details</label>
+      <input placeholder="Type todo" class="rounded-sm border border-gray-500 p-2 outline-none focus:border-dashed"
+        type="text" x-bind:value="text">
+      <hr>
+      <div class="flex justify-between">
+        <p><strong>You typed:</strong> <span x-bind:class="text ? '' : 'text-gray-400'">{{ text || 'Type todo' }}</span>
+        </p>
+        <button class="rounded-sm py-2 px-5 bg-blue-300 cursor-pointer hover:bg-blue-400 hover:text-white"
+          x-on:click="() => {if(text.trim().length) {const state = Chya.getState('todoList'); state.todos = [...state.todos, text]; text = '';}}">Add
+          todo</button>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-5 mt-10 border-t border-gray-500" x-app="todoList" x-state="{todos: []}">
+      <ul>
+        <li class="flex justify-between my-5" x-for="todo, i in todos">
+          <span>({{ i+1 }}) {{ todo }}</span>
+          <button x-on:click="state.todos = state.todos.filter((_, ind) => ind !== i)"
+            class="rounded-sm bg-orange-400 text-white hover:bg-orange-500 cursor-pointer py-2 px-5">Delete</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
