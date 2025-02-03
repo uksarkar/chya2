@@ -2,7 +2,7 @@ import { createEffect, createSignal, EFFECT_GETTER } from "./signal";
 import { evaluate, isFn } from "./utils";
 
 const renderTextNode = (node: Node, state: Record<string, unknown>) => {
-  const matches = [...node.textContent!.matchAll(/\{\{(.*?)\}\}/g)];
+  const matches = [...(node.textContent!.matchAll(/\{\{(.*?)\}\}/g) || [])];
 
   if (matches.length) {
     const originalText = node.textContent;
@@ -204,10 +204,10 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
 };
 
 export const compileDOM = (
-  children: NodeListOf<ChildNode> | HTMLCollection,
+  children: NodeListOf<ChildNode>,
   state: Record<string, unknown>
 ) => {
-  for (const child of children) {
+  for (const child of Array.from(children)) {
     // Handle Element Nodes
     if (child.nodeType === Node.ELEMENT_NODE) {
       const element = child as HTMLElement;
@@ -238,20 +238,20 @@ export const compileDOM = (
 };
 
 export const buildStateFromExpr = (expr: string | null) => {
-  const data = evaluate(expr, {}) || {};
-  return Object.keys(data).reduce(
-    (obj, key) => {
-      const signal = createSignal(data[key]);
-      obj.getters[key] = signal[0];
-      obj.setters[key] = signal[1];
+  const data = evaluate(expr) || {};
+  const state = {} as Record<string, any>;
 
-      return obj;
-    },
-    {
-      getters: {} as Record<string, ReturnType<typeof createSignal>[0]>,
-      setters: {} as Record<string, ReturnType<typeof createSignal>[1]>
-    }
-  );
+  Object.keys(data).forEach(key => {
+    const [getter, setter] = createSignal(data[key]);
+
+    Object.defineProperty(state, key, {
+      get: getter,
+      set: setter,
+      enumerable: true
+    });
+  });
+
+  return state;
 };
 
 export const proxyGetter = (target: any, p: any, receiver: any) => {
@@ -260,20 +260,4 @@ export const proxyGetter = (target: any, p: any, receiver: any) => {
     return val();
   }
   return val;
-};
-
-export const proxyState = (
-  getters: Record<string, ReturnType<typeof createSignal>[0]>,
-  setters: Record<string, ReturnType<typeof createSignal>[1]>
-) => {
-  return new Proxy(getters, {
-    get: proxyGetter,
-    set(_, p, newValue) {
-      if (isFn(setters[p as keyof unknown])) {
-        setters[p as keyof unknown](newValue);
-        return true;
-      }
-      return false;
-    }
-  });
 };

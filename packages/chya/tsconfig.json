@@ -5,7 +5,8 @@
         "declarationDir": "dist",
         "sourceMap": true,
         "moduleResolution": "node",
-        "target": "ES6",
+        "target": "ESNext",
+        "lib": ["ES2020", "DOM"],
         "module": "ES2020",
         "strict": true,
         "esModuleInterop": true
