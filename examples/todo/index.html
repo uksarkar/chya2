@@ -13,7 +13,7 @@
     <div class="flex flex-col gap-5" x-app="todoForm" x-state="{text: ''}">
       <label for="">Todo details</label>
       <input placeholder="Type todo" class="rounded-sm border border-gray-500 p-2 outline-none focus:border-dashed"
-        type="text" x-bind:value="text">
+        type="text" x-model="text" x-on:keyDown="() => {if(event.key === 'Enter'){console.log('submitted')}}">
       <hr>
       <div class="flex justify-between">
         <p><strong>You typed:</strong> <span x-bind:class="text ? '' : 'text-gray-400'">{{ text || 'Type todo' }}</span>
@@ -28,7 +28,7 @@
       <ul>
         <li class="flex justify-between my-5" x-for="todo, i in todos">
           <span>({{ i+1 }}) {{ todo }}</span>
-          <button x-on:click="state.todos = state.todos.filter((_, ind) => ind !== i)"
+          <button x-on:click="todos = todos.filter((_, ind) => ind !== i)"
             class="rounded-sm bg-orange-400 text-white hover:bg-orange-500 cursor-pointer py-2 px-5">Delete</button>
         </li>
       </ul>

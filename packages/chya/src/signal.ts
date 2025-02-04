@@ -23,7 +23,6 @@ export function createSignal<T>(
   const subscribers = new Set<() => void>();
 
   function get() {
-    // If there's an active effect, register it as a subscriber
     if (activeEffect) {
       subscribers.add(activeEffect);
     }
@@ -40,8 +39,11 @@ export function createSignal<T>(
     }
   }
 
-  get[EFFECT_GETTER] = true;
-  set[EFFECT_SETTER] = true;
+  get[EFFECT_GETTER] = EFFECT_GETTER;
+  set[EFFECT_SETTER] = EFFECT_SETTER;
+
+  get[EFFECT_SETTER] = set;
+  set[EFFECT_GETTER] = get;
 
   return [get, set];
 }

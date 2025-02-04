@@ -1,14 +1,18 @@
-import { createEffect, createSignal, EFFECT_GETTER } from "./signal";
-import { evaluate, isFn } from "./utils";
+import { createEffect, createSignal, EFFECT_SETTER } from "./signal";
+import { evaluate, extractAttrExpr, isFn } from "./utils";
+
+const createComment = () => document.createComment("");
+const defineProp = Object.defineProperty;
+const objKeys = Object.keys;
 
 const renderTextNode = (node: Node, state: Record<string, unknown>) => {
-  const matches = [...(node.textContent!.matchAll(/\{\{(.*?)\}\}/g) || [])];
+  const matches = [...node.textContent!.matchAll(/\{\{(.*?)\}\}/g)];
 
   if (matches.length) {
-    const originalText = node.textContent;
+    const originalText = node.textContent!;
 
     createEffect(() => {
-      let newContent = originalText!;
+      let newContent = originalText;
       matches.forEach(match => {
         try {
           newContent = newContent.replace(
@@ -25,47 +29,56 @@ const renderTextNode = (node: Node, state: Record<string, unknown>) => {
 };
 
 const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
-  const isCheckBox = element.getAttribute("type") === "checkbox";
-
   Array.from(element.attributes).forEach(attr => {
+    const expr = attr.value.trim();
+
     // Process x-bind:*
     if (attr.name.startsWith("x-bind:")) {
-      const [_, binding] = attr.name.split(":");
-      const [attrName, modifier] = binding?.split(".") || [];
-      const expr = attr.value.trim();
-
-      if (attrName === "value") {
-        // Bind the value properly for input fields
-        element.addEventListener(modifier || "input", e => {
-          state[expr] = isCheckBox
-            ? (e.target as HTMLInputElement).checked
-            : (e.target as HTMLInputElement).value;
-        });
-      }
+      const [attrName] = extractAttrExpr(attr.name, 7);
 
       createEffect(() => {
         try {
           const evaluatedValue = evaluate(expr, state);
-          if (attrName === "value") {
-            if (isCheckBox) {
-              (element as HTMLInputElement).checked = !!evaluatedValue;
-            } else {
-              (element as HTMLInputElement).value = evaluatedValue;
-            }
-          } else {
-            element.setAttribute(attrName, String(evaluatedValue));
-          }
+          element.setAttribute(attrName, String(evaluatedValue));
         } catch (e) {
           console.error(`Error evaluating x-bind:${attrName}`, e);
         }
       });
     }
 
+    // Process x-model.*
+    else if (attr.name.startsWith("x-model")) {
+      const [_, eventName] = extractAttrExpr(attr.name, 7);
+      const isCheckBox = (element as HTMLInputElement).type.charAt(0) === "c";
+
+      // Bind the value properly for input fields
+      element.addEventListener(eventName || "input", e => {
+        const val = isCheckBox
+          ? (e.target as HTMLInputElement).checked
+          : (e.target as HTMLInputElement).value;
+
+        if (state[expr] && state[expr][EFFECT_SETTER as keyof unknown]) {
+          // @ts-ignore
+          state[expr][EFFECT_SETTER](val);
+        } else {
+          state[expr] = val;
+        }
+      });
+
+      // create effect
+      createEffect(() => {
+        const evaluatedValue = evaluate(expr, state);
+        if (isCheckBox) {
+          (element as HTMLInputElement).checked = !!evaluatedValue;
+        } else {
+          (element as HTMLInputElement).value = evaluatedValue;
+        }
+      });
+    }
+
     // Process x-on:*
     else if (attr.name.startsWith("x-on:")) {
-      const [_, eventName] = attr.name.split(":");
-      const [event, modifier] = eventName?.split(".") || [];
-      const expr = attr.value.trim();
+      const [event, modifier] = extractAttrExpr(attr.name, 5);
 
       element.addEventListener(event, event => {
         try {
@@ -85,8 +98,7 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
 
     // Process x-if:*
     else if (attr.name === "x-if") {
-      const expr = element.getAttribute("x-if")!.trim();
-      const placeholder = document.createComment("");
+      const placeholder = createComment();
 
       createEffect(() => {
         try {
@@ -123,12 +135,12 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
   }
 
   const parent = element.parentElement!;
-  const placeholder = document.createComment("");
+  const placeholder = createComment();
   parent.insertBefore(placeholder, element);
-  element.remove(); // Remove template, but keep reference
+  element.remove();
 
   const renderedNodes = new Map<
-    any,
+    number,
     {
       setter: ReturnType<typeof createSignal>[1];
       node: HTMLElement;
@@ -176,23 +188,18 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
           });
 
           // Create a new reactive scope for each item
+          const itemState = {};
+          objKeys(state).forEach(key => {
+            defineProp(itemState, key, {
+              get: () => state[key],
+              set: v => (state[key] = v)
+            });
+          });
+          defineProp(itemState, itemName, {
+            get: getter
+          });
+          defineProp(itemState, indexKey, { get: iGetter });
           createEffect(() => {
-            const itemState = new Proxy(
-              { state, [itemName]: null, [indexKey]: index },
-              {
-                get(target, p, receiver) {
-                  if (p === itemName) {
-                    return getter();
-                  }
-
-                  if (p === indexKey) {
-                    return iGetter();
-                  }
-
-                  return Reflect.get(target, p, receiver);
-                }
-              }
-            );
             compileDOM(clone.childNodes, itemState);
           });
         }
@@ -237,27 +244,20 @@ export const compileDOM = (
   }
 };
 
-export const buildStateFromExpr = (expr: string | null) => {
-  const data = evaluate(expr) || {};
-  const state = {} as Record<string, any>;
+export const buildState = (data: Record<string, any>) => {
+  objKeys(data).forEach(key => {
+    if (isFn(data[key])) {
+      return;
+    }
 
-  Object.keys(data).forEach(key => {
     const [getter, setter] = createSignal(data[key]);
 
-    Object.defineProperty(state, key, {
+    defineProp(data, key, {
       get: getter,
       set: setter,
       enumerable: true
     });
   });
 
-  return state;
-};
-
-export const proxyGetter = (target: any, p: any, receiver: any) => {
-  const val = Reflect.get(target, p, receiver);
-  if (val && val[EFFECT_GETTER]) {
-    return val();
-  }
-  return val;
+  return data;
 };
