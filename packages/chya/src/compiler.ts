@@ -227,6 +227,26 @@ export const compileDOM = (
       // bind attrs
       bindAttrs(element, state);
 
+      // Process x-html:*
+      if (element.hasAttribute("x-html")) {
+        createEffect(() => {
+          element.innerHTML = evaluate(element.getAttribute("x-html"), state);
+        });
+        return;
+      }
+
+      // Process x-template:*
+      if (element.hasAttribute("x-template")) {
+        createEffect(() => {
+          element.innerHTML = evaluate(
+            element.getAttribute("x-template"),
+            state
+          );
+          compileDOM(element.childNodes, state);
+        });
+        return;
+      }
+
       // Recursively process child nodes
       if (element.hasChildNodes()) {
         compileDOM(element.childNodes, state);
