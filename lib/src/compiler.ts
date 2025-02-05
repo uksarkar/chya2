@@ -203,7 +203,7 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
 };
 
 export const compileDOM = (
-  children: NodeListOf<ChildNode>,
+  children: NodeListOf<ChildNode> | HTMLElement[],
   state: Record<string, unknown>
 ) => {
   for (const child of Array.from(children)) {
@@ -232,8 +232,7 @@ export const compileDOM = (
                 placeholder.replaceWith(element);
 
                 // Rebind events
-                compileDOM(element.childNodes, state);
-                bindAttrs(element, state);
+                compileDOM([element], state);
               }
             }
           } catch (e) {
