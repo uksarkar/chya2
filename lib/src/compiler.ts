@@ -23,7 +23,7 @@ const renderTextNode = (node: Node, state: Record<string, unknown>) => {
         try {
           newContent = newContent.replace(
             match[0],
-            evaluate(match[1]?.trim(), state)
+            evaluate(match[1].trim(), state)
           );
         } catch (e) {
           console.error(`Error evaluating expression: ${match[1]}`, e);
@@ -123,8 +123,8 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
 
 const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
   const expr = getAttr(element, ATTR_X_FOR)!.trim();
-  const [itemExpr, arrayExpr] = expr.split(" in ");
-  const [itemName, indexKey] = itemExpr.split(",");
+  const [itemExpr, arrayExpr] = expr.split(" in ").map(s => s.trim());
+  const [itemName, indexKey] = itemExpr.split(",").map(s => s.trim());
 
   if (!itemName || !arrayExpr) {
     console.error(`Invalid x-for expression: "${expr}"`);
