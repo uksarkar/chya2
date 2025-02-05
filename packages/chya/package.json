@@ -5,14 +5,14 @@
   "module": "dist/index.esm.js",
   "license": "MIT",
   "author": "Utpal Sarkar <connect@utpal.io>",
-  "types": "./index.d.ts",
+  "type": "module",
+  "types": "./dist/index.d.ts",
   "files": [
-    "/dist",
-    "/index.d.ts"
+    "/dist"
   ],
   "exports": {
     ".": {
-      "types": "./index.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.js",
       "require": "./dist/index.cjs.js",
       "default": "./dist/index.umd.js"

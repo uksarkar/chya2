@@ -1,4 +1,4 @@
-import "Chya";
+import "chya";
 import "./style.css";
 
 Chya.app("todoList", () => {

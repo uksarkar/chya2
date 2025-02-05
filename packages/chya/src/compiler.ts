@@ -1,11 +1,5 @@
-import { createEffect, createSignal } from "./signal";
-import {
-  buildState,
-  evaluate,
-  extractAttrExpr,
-  isFn,
-  RAW_STATE
-} from "./utils";
+import { buildState, createEffect, createSignal, RAW_STATE } from "./signal";
+import { evaluate, extractAttrExpr, isFn } from "./utils";
 
 const createComment = () => document.createComment("");
 

@@ -1,6 +1,6 @@
 import { compileDOM } from "./compiler";
-import { createEffect, createSignal } from "./signal";
-import { buildState, evaluate } from "./utils";
+import { createEffect, createSignal, buildState } from "./signal";
+import { evaluate } from "./utils";
 
 export default class Chya {
   private states: Map<string, any>;

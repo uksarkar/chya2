@@ -2,6 +2,7 @@ import { isFn } from "./utils";
 
 export const EFFECT_GETTER = Symbol();
 export const EFFECT_SETTER = Symbol();
+export const RAW_STATE = Symbol();
 
 // Global variables
 let activeEffect: (() => void) | null = null;
@@ -45,3 +46,32 @@ export function createSignal<T>(
 
   return [get, set];
 }
+
+export const buildState = (state: Record<string, unknown>) => {
+  const newState = {
+    [RAW_STATE]: () => state
+  };
+  Object.keys(state).forEach(key => {
+    if (!isFn(state[key])) {
+      state[key] = createSignal(state[key])[0];
+    }
+    Object.defineProperty(newState, key, {
+      get: () => {
+        if (state[key] && state[key][EFFECT_GETTER as keyof unknown]) {
+          return (state[key] as () => unknown)();
+        }
+
+        return state[key];
+      },
+      set: val => {
+        if (state[key] && isFn(state[key][EFFECT_SETTER as keyof unknown])) {
+          (state[key][EFFECT_SETTER as keyof unknown] as (v: unknown) => void)(
+            val
+          );
+        }
+      }
+    });
+  });
+
+  return newState;
+};

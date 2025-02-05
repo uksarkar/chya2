@@ -11,14 +11,14 @@ export default [
       {
         file: "dist/index.umd.js",
         format: "umd",
-        name: "Chya",
+        name: "chya",
         sourcemap: true
       },
       {
         file: "dist/chya.min.js",
         format: "umd",
-        name: "Chya",
-        sourcemap: false,
+        name: "chya",
+        sourcemap: true,
         plugins: [terser()]
       }
     ],
@@ -29,7 +29,7 @@ export default [
     ]
   },
   {
-    input: "src/index.ts",
+    input: "src/global.d.ts",
     output: [{ file: "dist/index.d.ts", format: "es" }],
     plugins: [dts()]
   }
