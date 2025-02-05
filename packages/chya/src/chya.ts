@@ -1,6 +1,6 @@
-import { buildState, compileDOM } from "./compiler";
+import { createReactiveObj, compileDOM } from "./compiler";
 import { createEffect, createSignal } from "./signal";
-import { evaluate } from "./utils";
+import { evaluate, guardProperty } from "./utils";
 
 export default class Chya {
   private states: Map<string, any>;
@@ -19,14 +19,15 @@ export default class Chya {
   }
 
   getState(name: string) {
-    return this.states.get(name);
+    const state = this.states.get(name);
+    return state ? guardProperty(state) : null;
   }
 
   render(el: HTMLElement) {
     const stateName = el.getAttribute("x-app")!.trim();
     const state = this.states.get(stateName) ?? this.createState(el);
 
-    if (!this.states.has(stateName)) {
+    if (!this.states.has(stateName) && state) {
       this.states.set(stateName, state);
     }
 
@@ -39,7 +40,7 @@ export default class Chya {
       return;
     }
 
-    this.states.set(name, buildState(setup()));
+    this.states.set(name, createReactiveObj(setup()));
   }
 
   private createState(el: HTMLElement) {
@@ -48,6 +49,6 @@ export default class Chya {
       console.warn("Missing x-state attribute in:", el);
       return {};
     }
-    return buildState(evaluate(stateExpr) || {});
+    return createReactiveObj(evaluate(stateExpr) || {});
   }
 }

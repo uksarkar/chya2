@@ -1,9 +1,7 @@
 import { createEffect, createSignal, EFFECT_SETTER } from "./signal";
-import { evaluate, extractAttrExpr, isFn } from "./utils";
+import { evaluate, extractAttrExpr, isFn, objKeys } from "./utils";
 
 const createComment = () => document.createComment("");
-const defineProp = Object.defineProperty;
-const objKeys = Object.keys;
 
 const renderTextNode = (node: Node, state: Record<string, unknown>) => {
   const matches = [...node.textContent!.matchAll(/\{\{(.*?)\}\}/g)];
@@ -39,7 +37,10 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
       createEffect(() => {
         try {
           const evaluatedValue = evaluate(expr, state);
-          element.setAttribute(attrName, String(evaluatedValue));
+          element.setAttribute(
+            attrName,
+            String(isFn(evaluatedValue) ? evaluatedValue() : evaluatedValue)
+          );
         } catch (e) {
           console.error(`Error evaluating x-bind:${attrName}`, e);
         }
@@ -57,17 +58,16 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
           ? (e.target as HTMLInputElement).checked
           : (e.target as HTMLInputElement).value;
 
-        if (state[expr] && state[expr][EFFECT_SETTER as keyof unknown]) {
+        if (state[expr] && isFn(state[expr][EFFECT_SETTER as keyof unknown])) {
           // @ts-ignore
           state[expr][EFFECT_SETTER](val);
-        } else {
-          state[expr] = val;
         }
       });
 
       // create effect
       createEffect(() => {
         const evaluatedValue = evaluate(expr, state);
+
         if (isCheckBox) {
           (element as HTMLInputElement).checked = !!evaluatedValue;
         } else {
@@ -188,17 +188,11 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
           });
 
           // Create a new reactive scope for each item
-          const itemState = {};
-          objKeys(state).forEach(key => {
-            defineProp(itemState, key, {
-              get: () => state[key],
-              set: v => (state[key] = v)
-            });
-          });
-          defineProp(itemState, itemName, {
-            get: getter
-          });
-          defineProp(itemState, indexKey, { get: iGetter });
+          const itemState = {
+            ...state,
+            [itemName]: getter,
+            [indexKey]: iGetter
+          };
           createEffect(() => {
             compileDOM(clone.childNodes, itemState);
           });
@@ -244,20 +238,11 @@ export const compileDOM = (
   }
 };
 
-export const buildState = (data: Record<string, any>) => {
+export const createReactiveObj = (data: Record<string, any>) => {
   objKeys(data).forEach(key => {
-    if (isFn(data[key])) {
-      return;
+    if (!isFn(data[key])) {
+      data[key] = createSignal(data[key])[0];
     }
-
-    const [getter, setter] = createSignal(data[key]);
-
-    defineProp(data, key, {
-      get: getter,
-      set: setter,
-      enumerable: true
-    });
   });
-
   return data;
 };

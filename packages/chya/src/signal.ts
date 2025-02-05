@@ -40,10 +40,8 @@ export function createSignal<T>(
   }
 
   get[EFFECT_GETTER] = EFFECT_GETTER;
-  set[EFFECT_SETTER] = EFFECT_SETTER;
-
   get[EFFECT_SETTER] = set;
-  set[EFFECT_GETTER] = get;
+  set[EFFECT_SETTER] = EFFECT_SETTER;
 
   return [get, set];
 }
