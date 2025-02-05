@@ -1,6 +1,6 @@
-import { EFFECT_GETTER, EFFECT_SETTER } from "./signal";
+import { createSignal, EFFECT_GETTER, EFFECT_SETTER } from "./signal";
 
-export const objKeys = Object.keys;
+export const RAW_STATE = Symbol();
 export const isFn = (fn: unknown): fn is Function => typeof fn === "function";
 
 export const evaluate = (
@@ -8,16 +8,21 @@ export const evaluate = (
   scope?: Record<string, unknown>
 ) => {
   return new Function("scope", `with(scope) { return ${expression} }`)(
-    scope ? guardProperty(scope) : {}
+    scope || {}
   );
 };
 
 export const extractAttrExpr = (name: string, startsFrom: number) =>
   name.slice(startsFrom).split(".");
 
-export const guardProperty = (state: Record<string, unknown>) => {
-  const newState = {};
-  objKeys(state).forEach(key => {
+export const buildState = (state: Record<string, unknown>) => {
+  const newState = {
+    [RAW_STATE]: () => state
+  };
+  Object.keys(state).forEach(key => {
+    if (!isFn(state[key])) {
+      state[key] = createSignal(state[key])[0];
+    }
     Object.defineProperty(newState, key, {
       get: () => {
         if (state[key] && state[key][EFFECT_GETTER as keyof unknown]) {

@@ -1,5 +1,11 @@
-import { createEffect, createSignal, EFFECT_SETTER } from "./signal";
-import { evaluate, extractAttrExpr, isFn, objKeys } from "./utils";
+import { createEffect, createSignal } from "./signal";
+import {
+  buildState,
+  evaluate,
+  extractAttrExpr,
+  isFn,
+  RAW_STATE
+} from "./utils";
 
 const createComment = () => document.createComment("");
 
@@ -57,11 +63,7 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
         const val = isCheckBox
           ? (e.target as HTMLInputElement).checked
           : (e.target as HTMLInputElement).value;
-
-        if (state[expr] && isFn(state[expr][EFFECT_SETTER as keyof unknown])) {
-          // @ts-ignore
-          state[expr][EFFECT_SETTER](val);
-        }
+        state[expr] = val;
       });
 
       // create effect
@@ -92,32 +94,6 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
           }
         } catch (e) {
           console.error(`Error evaluating x-on:${event}`, e);
-        }
-      });
-    }
-
-    // Process x-if:*
-    else if (attr.name === "x-if") {
-      const placeholder = createComment();
-
-      createEffect(() => {
-        try {
-          const condition = !!evaluate(expr, state);
-
-          if (!condition) {
-            if (element.isConnected) {
-              element.replaceWith(placeholder);
-            }
-          } else {
-            if (!element.isConnected && placeholder.isConnected) {
-              placeholder.replaceWith(element);
-
-              // Rebind events
-              compileDOM(element.childNodes, state);
-            }
-          }
-        } catch (e) {
-          console.error(`Error evaluating x-if: ${expr}`, e);
         }
       });
     }
@@ -188,11 +164,11 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
           });
 
           // Create a new reactive scope for each item
-          const itemState = {
-            ...state,
+          const itemState = buildState({
+            ...(state[RAW_STATE as keyof unknown] as () => object)(),
             [itemName]: getter,
             [indexKey]: iGetter
-          };
+          });
           createEffect(() => {
             compileDOM(clone.childNodes, itemState);
           });
@@ -212,6 +188,35 @@ export const compileDOM = (
     // Handle Element Nodes
     if (child.nodeType === Node.ELEMENT_NODE) {
       const element = child as HTMLElement;
+
+      // Process x-if
+      if (element.hasAttribute("x-if")) {
+        const expr = element.getAttribute("x-if")!.trim();
+        const placeholder = createComment();
+
+        createEffect(() => {
+          try {
+            const condition = !!evaluate(expr, state);
+
+            if (!condition) {
+              if (element.isConnected) {
+                element.replaceWith(placeholder);
+              }
+            } else {
+              if (!element.isConnected && placeholder.isConnected) {
+                placeholder.replaceWith(element);
+
+                // Rebind events
+                compileDOM(element.childNodes, state);
+                bindAttrs(element, state);
+              }
+            }
+          } catch (e) {
+            console.error(`Error evaluating x-if: ${expr}`, e);
+          }
+        });
+        return;
+      }
 
       // Process x-for
       if (element.hasAttribute("x-for")) {
@@ -236,13 +241,4 @@ export const compileDOM = (
       renderTextNode(child, state);
     }
   }
-};
-
-export const createReactiveObj = (data: Record<string, any>) => {
-  objKeys(data).forEach(key => {
-    if (!isFn(data[key])) {
-      data[key] = createSignal(data[key])[0];
-    }
-  });
-  return data;
 };
