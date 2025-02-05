@@ -1,15 +1,6 @@
 import "chya";
 import "./style.css";
 
-Chya.app("todoList", () => {
-  Chya.createEffect(() => {
-    const state = Chya.getState("todoForm");
-    console.log(state?.text);
-  });
-
-  return { todos: [] };
-});
-
 Chya.app("todoForm", () => {
   const [text, setText] = Chya.createSignal("");
 
