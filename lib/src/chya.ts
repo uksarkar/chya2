@@ -20,9 +20,7 @@ export default class Chya {
   };
 
   init() {
-    document
-      .querySelectorAll<HTMLElement>("[x-app]")
-      .forEach(el => this.render(el));
+    document.querySelectorAll<HTMLElement>("[x-app]").forEach(this.render);
   }
 
   getState(name: string) {
