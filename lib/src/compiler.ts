@@ -1,16 +1,15 @@
 import { buildState, createEffect, createSignal, RAW_STATE } from "./signal";
 import { evaluate, extractAttrExpr, isFn } from "./utils";
 
-const ATTR_X_FOR = "for";
-const ATTR_X_IF = "if";
-const ATTR_X_MODEL = "model";
-const ATTR_X_TEMPLATE = "template";
-const ATTR_X_HTML = "html";
+const ATTR_X_FOR = "x-for";
+const ATTR_X_IF = "x-if";
+const ATTR_X_MODEL = "x-model";
+const ATTR_X_TEMPLATE = "x-template";
+const ATTR_X_HTML = "x-html";
 
 const createComment = () => document.createComment("");
 const removeAttr = (el: HTMLElement, name: string) => el.removeAttribute(name);
 const getAttr = (el: HTMLElement, name: string) => el.getAttribute(name);
-const makeAttrName = (name: string) => `x-${name}`;
 
 const renderTextNode = (node: Node, state: Record<string, unknown>) => {
   const matches = [...node.textContent!.matchAll(/\{\{(.*?)\}\}/g)];
@@ -60,7 +59,7 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
               if (evaluatedValue) {
                 element.setAttribute(attrName, "");
               } else {
-                element.removeAttribute(attrName);
+                removeAttr(element, attrName);
               }
             } else {
               // Default case: use setAttribute
@@ -75,16 +74,15 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
     }
 
     // Process x-model.*
-    else if (attr.name === makeAttrName(ATTR_X_MODEL)) {
+    else if (attr.name === ATTR_X_MODEL) {
       const [_, eventName] = extractAttrExpr(attr.name, 7);
       const isCheckBox = (element as HTMLInputElement).type.charAt(0) === "c";
 
       // Bind the value properly for input fields
       element.addEventListener(eventName || "input", e => {
-        const val = isCheckBox
+        state[expr] = isCheckBox
           ? (e.target as HTMLInputElement).checked
           : (e.target as HTMLInputElement).value;
-        state[expr] = val;
       });
 
       // create effect
@@ -124,16 +122,16 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
 };
 
 const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
-  const expr = getAttr(element, makeAttrName(ATTR_X_FOR))!.trim();
-  const [itemExpr, arrayExpr] = expr.split(" in ").map(s => s.trim());
-  const [itemName, indexKey] = itemExpr.split(",").map(item => item.trim());
+  const expr = getAttr(element, ATTR_X_FOR)!.trim();
+  const [itemExpr, arrayExpr] = expr.split(" in ");
+  const [itemName, indexKey] = itemExpr.split(",");
 
   if (!itemName || !arrayExpr) {
     console.error(`Invalid x-for expression: "${expr}"`);
     return;
   }
 
-  removeAttr(element, makeAttrName(ATTR_X_FOR));
+  removeAttr(element, ATTR_X_FOR);
 
   const parent = element.parentElement!;
   const placeholder = createComment();
@@ -212,16 +210,18 @@ export const compileDOM = (
     // Handle Element Nodes
     if (child.nodeType === Node.ELEMENT_NODE) {
       const element = child as HTMLElement;
+      const x_if = getAttr(element, ATTR_X_IF);
+      const x_html = getAttr(element, ATTR_X_HTML);
+      const x_template = getAttr(element, ATTR_X_TEMPLATE);
 
       // Process x-if
-      if (element.hasAttribute(makeAttrName(ATTR_X_IF))) {
-        const expr = getAttr(element, makeAttrName(ATTR_X_IF))!.trim();
+      if (x_if) {
         const placeholder = createComment();
-        removeAttr(element, makeAttrName(ATTR_X_IF));
+        removeAttr(element, ATTR_X_IF);
 
         createEffect(() => {
           try {
-            const condition = !!evaluate(expr, state);
+            const condition = !!evaluate(x_if, state);
 
             if (!condition) {
               if (element.isConnected) {
@@ -237,14 +237,14 @@ export const compileDOM = (
               }
             }
           } catch (e) {
-            console.error(`Error evaluating x-if: ${expr}`, e);
+            console.error(`Error evaluating x-if: ${x_if}`, e);
           }
         });
         return;
       }
 
       // Process x-for
-      if (element.hasAttribute(makeAttrName(ATTR_X_FOR))) {
+      if (element.hasAttribute(ATTR_X_FOR)) {
         renderFor(element, state);
         return;
       }
@@ -253,27 +253,16 @@ export const compileDOM = (
       bindAttrs(element, state);
 
       // Process x-html:*
-      if (element.hasAttribute(makeAttrName(ATTR_X_HTML))) {
-        createEffect(() => {
-          element.innerHTML = evaluate(
-            getAttr(element, makeAttrName(ATTR_X_HTML)),
-            state
-          );
-        });
-        removeAttr(element, makeAttrName(ATTR_X_HTML));
-        return;
-      }
-
       // Process x-template:*
-      if (element.hasAttribute(makeAttrName(ATTR_X_TEMPLATE))) {
+      if (x_html || x_template) {
         createEffect(() => {
-          element.innerHTML = evaluate(
-            getAttr(element, makeAttrName(ATTR_X_TEMPLATE)),
-            state
-          );
-          compileDOM(element.childNodes, state);
+          element.innerHTML = evaluate(x_html || x_template, state);
+          if (x_template) {
+            compileDOM(element.childNodes, state);
+          }
         });
-        removeAttr(element, makeAttrName(ATTR_X_TEMPLATE));
+        removeAttr(element, ATTR_X_HTML);
+        removeAttr(element, ATTR_X_TEMPLATE);
         return;
       }
 
