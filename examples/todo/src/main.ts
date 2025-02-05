@@ -2,6 +2,11 @@ import "Chya";
 import "./style.css";
 
 Chya.app("todoList", () => {
+  Chya.createEffect(() => {
+    const state = Chya.getState("todoForm");
+    console.log(state?.text);
+  });
+
   return { todos: [] };
 });
 

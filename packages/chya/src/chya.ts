@@ -4,13 +4,20 @@ import { buildState, evaluate } from "./utils";
 
 export default class Chya {
   private states: Map<string, any>;
+  private activeEffect?: VoidFunction;
+  private stateSubscribers: Record<string, VoidFunction[]>;
 
   constructor() {
     this.states = new Map();
+    this.stateSubscribers = {};
   }
 
   createSignal = createSignal;
-  createEffect = createEffect;
+  createEffect = (effect: VoidFunction) => {
+    this.activeEffect = effect;
+    createEffect(effect);
+    this.activeEffect = undefined;
+  };
 
   init() {
     document
@@ -19,7 +26,14 @@ export default class Chya {
   }
 
   getState(name: string) {
-    return this.states.get(name);
+    const state = this.states.get(name);
+    if (!state && this.activeEffect) {
+      this.stateSubscribers[name] = [
+        ...(this.stateSubscribers[name] || []),
+        this.activeEffect
+      ];
+    }
+    return state;
   }
 
   render(el: HTMLElement) {
@@ -27,7 +41,7 @@ export default class Chya {
     const state = this.states.get(stateName) ?? this.createState(el);
 
     if (!this.states.has(stateName) && state) {
-      this.states.set(stateName, state);
+      this.setState(stateName, state);
     }
 
     compileDOM(el.childNodes, state);
@@ -39,7 +53,7 @@ export default class Chya {
       return;
     }
 
-    this.states.set(name, buildState(setup()));
+    this.setState(name, buildState(setup()));
   }
 
   private createState(el: HTMLElement) {
@@ -49,5 +63,11 @@ export default class Chya {
       return {};
     }
     return buildState(evaluate(stateExpr) || {});
+  }
+
+  private setState(name: string, state: Record<string, unknown>) {
+    this.states.set(name, state);
+    this.stateSubscribers[name]?.forEach(createEffect);
+    delete this.stateSubscribers[name];
   }
 }
