@@ -12,6 +12,11 @@ Chya.app("todoForm", () => {
     }
   };
 
+  Chya.createEffect(() => {
+    const state = Chya.getState("todoList");
+    console.log(state?.done)
+  })
+
   return { text, addTodo, isDone: false };
 });
 

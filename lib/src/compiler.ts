@@ -1,7 +1,16 @@
 import { buildState, createEffect, createSignal, RAW_STATE } from "./signal";
 import { evaluate, extractAttrExpr, isFn } from "./utils";
 
+const ATTR_X_FOR = "for";
+const ATTR_X_IF = "if";
+const ATTR_X_MODEL = "model";
+const ATTR_X_TEMPLATE = "template";
+const ATTR_X_HTML = "html";
+
 const createComment = () => document.createComment("");
+const removeAttr = (el: HTMLElement, name: string) => el.removeAttribute(name);
+const getAttr = (el: HTMLElement, name: string) => el.getAttribute(name);
+const makeAttrName = (name: string) => `x-${name}`;
 
 const renderTextNode = (node: Node, state: Record<string, unknown>) => {
   const matches = [...node.textContent!.matchAll(/\{\{(.*?)\}\}/g)];
@@ -36,19 +45,37 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
 
       createEffect(() => {
         try {
-          const evaluatedValue = evaluate(expr, state);
-          element.setAttribute(
-            attrName,
-            String(isFn(evaluatedValue) ? evaluatedValue() : evaluatedValue)
-          );
+          let evaluatedValue = evaluate(expr, state);
+          if (isFn(evaluatedValue)) {
+            evaluatedValue = evaluatedValue();
+          }
+
+          if (attrName in element) {
+            // Direct property assignment (better for inputs, checkboxes, etc.)
+            // @ts-ignore
+            element[attrName] = evaluatedValue;
+          } else {
+            // Handle boolean attributes properly
+            if (typeof evaluatedValue === "boolean") {
+              if (evaluatedValue) {
+                element.setAttribute(attrName, "");
+              } else {
+                element.removeAttribute(attrName);
+              }
+            } else {
+              // Default case: use setAttribute
+              element.setAttribute(attrName, String(evaluatedValue));
+            }
+          }
+          removeAttr(element, attr.name);
         } catch (e) {
-          console.error(`Error evaluating x-bind:${attrName}`, e);
+          console.error(`Error evaluating x-bind:${attrName}:`, e);
         }
       });
     }
 
     // Process x-model.*
-    else if (attr.name.startsWith("x-model")) {
+    else if (attr.name === makeAttrName(ATTR_X_MODEL)) {
       const [_, eventName] = extractAttrExpr(attr.name, 7);
       const isCheckBox = (element as HTMLInputElement).type.charAt(0) === "c";
 
@@ -70,6 +97,7 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
           (element as HTMLInputElement).value = evaluatedValue;
         }
       });
+      removeAttr(element, attr.name);
     }
 
     // Process x-on:*
@@ -90,12 +118,13 @@ const bindAttrs = (element: HTMLElement, state: Record<string, unknown>) => {
           console.error(`Error evaluating x-on:${event}`, e);
         }
       });
+      removeAttr(element, attr.name);
     }
   });
 };
 
 const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
-  const expr = element.getAttribute("x-for")!.trim();
+  const expr = getAttr(element, makeAttrName(ATTR_X_FOR))!.trim();
   const [itemExpr, arrayExpr] = expr.split(" in ").map(s => s.trim());
   const [itemName, indexKey] = itemExpr.split(",").map(item => item.trim());
 
@@ -103,6 +132,8 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
     console.error(`Invalid x-for expression: "${expr}"`);
     return;
   }
+
+  removeAttr(element, makeAttrName(ATTR_X_FOR));
 
   const parent = element.parentElement!;
   const placeholder = createComment();
@@ -147,9 +178,7 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
           const [getter, setter] = createSignal(item);
           const [iGetter, indexSetter] = createSignal(index);
           const clone = element.cloneNode(true) as HTMLElement;
-          clone.removeAttribute("x-for");
           parent.insertBefore(clone, placeholder);
-          bindAttrs(clone, state);
 
           renderedNodes.set(index, {
             node: clone,
@@ -163,6 +192,7 @@ const renderFor = (element: HTMLElement, state: Record<string, unknown>) => {
             [itemName]: getter,
             [indexKey]: iGetter
           });
+          bindAttrs(clone, itemState);
           createEffect(() => {
             compileDOM(clone.childNodes, itemState);
           });
@@ -184,9 +214,10 @@ export const compileDOM = (
       const element = child as HTMLElement;
 
       // Process x-if
-      if (element.hasAttribute("x-if")) {
-        const expr = element.getAttribute("x-if")!.trim();
+      if (element.hasAttribute(makeAttrName(ATTR_X_IF))) {
+        const expr = getAttr(element, makeAttrName(ATTR_X_IF))!.trim();
         const placeholder = createComment();
+        removeAttr(element, makeAttrName(ATTR_X_IF));
 
         createEffect(() => {
           try {
@@ -213,7 +244,7 @@ export const compileDOM = (
       }
 
       // Process x-for
-      if (element.hasAttribute("x-for")) {
+      if (element.hasAttribute(makeAttrName(ATTR_X_FOR))) {
         renderFor(element, state);
         return;
       }
@@ -222,22 +253,27 @@ export const compileDOM = (
       bindAttrs(element, state);
 
       // Process x-html:*
-      if (element.hasAttribute("x-html")) {
+      if (element.hasAttribute(makeAttrName(ATTR_X_HTML))) {
         createEffect(() => {
-          element.innerHTML = evaluate(element.getAttribute("x-html"), state);
+          element.innerHTML = evaluate(
+            getAttr(element, makeAttrName(ATTR_X_HTML)),
+            state
+          );
         });
+        removeAttr(element, makeAttrName(ATTR_X_HTML));
         return;
       }
 
       // Process x-template:*
-      if (element.hasAttribute("x-template")) {
+      if (element.hasAttribute(makeAttrName(ATTR_X_TEMPLATE))) {
         createEffect(() => {
           element.innerHTML = evaluate(
-            element.getAttribute("x-template"),
+            getAttr(element, makeAttrName(ATTR_X_TEMPLATE)),
             state
           );
           compileDOM(element.childNodes, state);
         });
+        removeAttr(element, makeAttrName(ATTR_X_TEMPLATE));
         return;
       }
 

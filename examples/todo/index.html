@@ -24,10 +24,15 @@
       </div>
     </div>
 
-    <div class="flex flex-col gap-5 mt-10 border-t border-gray-500" x-app="todoList" x-state="{todos: []}">
+    <div class="flex flex-col gap-5 mt-10 border-t border-gray-500" x-app="todoList" x-state="{todos: [], done: []}">
       <ul>
-        <li class="flex justify-between my-5" x-for="todo, i in todos">
-          <span>({{ i+1 }}) {{ todo }}</span>
+        <li x-bind:class="`flex justify-between my-5 ${done.includes(i) ? 'text-gray-400' : ''}`"
+          x-for="todo, i in todos">
+          <label>
+            <input type="checkbox" x-bind:checked="done.includes(i)"
+              x-on:input="() => {if(done.includes(i)) {done = done.filter(v => v !== i)} else {done = [...done, i]}}" />
+            <span>({{ i+1 }}) {{ todo }}</span>
+          </label>
           <button x-on:click="todos = todos.filter((_, ind) => ind !== i)"
             class="rounded-sm bg-orange-400 text-white hover:bg-orange-500 cursor-pointer py-2 px-5">Delete</button>
         </li>
