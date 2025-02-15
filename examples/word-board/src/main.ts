@@ -110,7 +110,8 @@ Chya.app("chart", () => {
     const prediction = predictions().find(p => p.word_id === word_id);
     if (!prediction) return;
 
-    const vote = votes().find(v => v.prediction_id === prediction.id);
+    const u = user();
+    const vote = votes().find(v => v.prediction_id === prediction.id && v.userId === u?.uid);
     if (vote) {
       updateVote(vote.id!, vote.value + 1);
     } else {
