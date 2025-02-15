@@ -24,43 +24,42 @@
         </button>
 
         <button x-on:click="signOut"
-          class="bg-gray-500 rounded-sm cursor-pointer py-2 px-5 text-white hover:bg-gray-700">
+          class="bg-gray-200 rounded-sm cursor-pointer py-2 px-5 hover:bg-gray-300">
           Logout <small>({{ user.displayName || user.email }})</small>
         </button>
       </div>
     </header>
-    <div class="w-full min-h-[50vh] border border-gray-300 rounded shadow mb-2 p-5 flex flex-wrap" x-app="chart">
+    <div class="w-full min-h-[50vh] border border-gray-300 rounded shadow mb-2 p-5 flex flex-wrap gap-2" x-app="chart">
       <div class="w-1/2 h-[400px]">
         <canvas id="wordCharts"></canvas>
       </div>
-      <div x-if="user" class="w-1/2">
-        <h2 class="mb-2 font-semibold">Chats <small>(Realtime no persistent)</small></h2>
-        <div class="flex flex-col p-4 bg-gray-100 rounded h-max">
+      <div x-if="user" class="flex flex-col gap-2 grow">
+        <h2 class="font-semibold">Chats <small>(Realtime no persistent)</small></h2>
+        <div class="flex flex-col bg-gray-50 rounded grow">
           <!-- Chat Messages -->
-          <div id="chatBox" class="flex-1 overflow-y-auto space-y-4 mb-4 max-h-[400px]">
-            <!-- My message bubble -->
+          <div id="chatBox" class="flex-1 overflow-y-auto space-y-1 grow max-h-[300px] p-4 pb-0">
+            <!-- message bubble -->
             <div x-for="message in messages">
               <div x-bind:class="`flex ${message.name === user.displayName ? 'justify-end' : 'justify-start'}`">
-                <div
-                  x-bind:class="`p-3 rounded-lg max-w-xs ${message.name === user.displayName ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-800'}`">
+                <div x-bind:class="`p-3 rounded-lg max-w-xs border ${message.name === user.displayName ? 'bg-orange-50 text-black border-orange-500' : 'bg-gray-200 text-gray-800 border-gray-300'} mt-2`">
                   <span class="font-bold">{{ message.name }}</span>
                   <p class="text-sm">{{ message.text }}</p>
                 </div>
-              </div>
+              </div>                            
             </div>
           </div>
 
           <!-- Typing indicator -->
-          <div class="flex justify-start">
-            <div x-bind:class="`text-gray-500 italic text-sm ${isTyping ? '' : 'invisible'}`">Typing...</div>
+          <div class="flex justify-start px-4 py-1">
+            <div x-bind:class="`text-gray-500 italic text-sm ${isTyping ? '' : 'invisible'}`">Typing...<span class="animate-blink">|</span></div>
           </div>
 
           <!-- Input and Send Button -->
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2 p-4 pt-0">
             <input type="text" placeholder="Type a message..." x-model="messageInput"
               x-on:keydown="() => {if(event.key === 'Enter') {sendMessage()}}"
-              class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button class="bg-blue-500 text-white p-2 rounded-lg cursor-pointer" x-on:click="sendMessage">Send</button>
+              class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500" />
+            <button class="bg-orange-500 text-white p-2 rounded-lg cursor-pointer hover:bg-orange-700" x-on:click="sendMessage">Send</button>
           </div>
         </div>
       </div>

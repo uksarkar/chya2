@@ -1,15 +1,6 @@
 import "./style.css";
-import "chya";import {
-  Chart,
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Tooltip,
-  Legend,
-  ChartItem
-} from "chart.js";
+import "chya";
+import Chart from "chart.js/auto";
 import { produce } from "immer";
 import { format } from "date-fns";
 import { predictions, votes, words } from "./stores/chart";
@@ -24,16 +15,6 @@ import {
 } from "./services/collections";
 import { signOut } from "./services/firebase";
 import { isTyping, messageInput, messages, sendMessage } from "./stores/chats";
-
-Chart.register(
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Tooltip,
-  Legend
-);
 
 const datasets = Chya.computed(() => {
   // Store the data once to avoid multiple function calls
