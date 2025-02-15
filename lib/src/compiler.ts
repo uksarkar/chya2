@@ -217,6 +217,7 @@ export const compileDOM = (
       // Process x-if
       if (x_if) {
         const placeholder = createComment();
+        let rebind = true;
         removeAttr(element, ATTR_X_IF);
 
         createEffect(() => {
@@ -230,22 +231,25 @@ export const compileDOM = (
             } else {
               if (!element.isConnected && placeholder.isConnected) {
                 placeholder.replaceWith(element);
+                rebind = true;
+              }
 
-                // Rebind events
+              if (rebind) {
                 compileDOM([element], state);
+                rebind = false;
               }
             }
           } catch (e) {
             console.error(`Error evaluating x-if: ${x_if}`, e);
           }
         });
-        return;
+        continue;
       }
 
       // Process x-for
       if (element.hasAttribute(ATTR_X_FOR)) {
         renderFor(element, state);
-        return;
+        continue;
       }
 
       // bind attrs
@@ -262,7 +266,7 @@ export const compileDOM = (
         });
         removeAttr(element, ATTR_X_HTML);
         removeAttr(element, ATTR_X_TEMPLATE);
-        return;
+        continue;
       }
 
       // Recursively process child nodes
