@@ -19,9 +19,9 @@ export default class Chya {
     this.activeEffect = undefined;
   };
   computed = <T>(ef: () => T) => {
-    const [getter, setter] = createSignal<any>(undefined);
+    const [getter, setter] = createSignal<T | undefined>(undefined);
     createEffect(() => setter(ef));
-    return getter;
+    return getter as () => T;
   };
 
   init() {
