@@ -1,6 +1,6 @@
 import "./style.css";
 import "chya";
-import Chart from "chart.js/auto";
+import Chart, { ChartItem } from "chart.js/auto";
 import { produce } from "immer";
 import { format } from "date-fns";
 import { predictions, votes, words } from "./stores/chart";
