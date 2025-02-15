@@ -18,12 +18,17 @@ export default class Chya {
     createEffect(effect);
     this.activeEffect = undefined;
   };
+  computed = <T>(ef: () => T) => {
+    const [getter, setter] = createSignal<any>(undefined);
+    createEffect(() => setter(ef));
+    return getter;
+  };
 
   init() {
     document
       .querySelectorAll<HTMLElement>("[x-app]")
       .forEach(el => this.render(el));
-  } 
+  }
 
   getState(name: string) {
     const state = this.states.get(name);
