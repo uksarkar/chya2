@@ -19,7 +19,7 @@ export function createEffect(fn: () => void) {
 // Modify createSignal to track effects
 export function createSignal<T>(
   initialValue: T | (() => T)
-): [() => T, (newValue: T | ((prev: T) => T)) => void] {
+): [() => T, (newValue: T | ((prev: T) => T), notify?: boolean) => void] {
   let value = isFn(initialValue) ? (initialValue as () => T)() : initialValue;
   const subscribers = new Set<() => void>();
 
@@ -30,13 +30,15 @@ export function createSignal<T>(
     return value;
   }
 
-  function set(newValue: T | ((prev: T) => T)) {
+  function set(newValue: T | ((prev: T) => T), notify = true) {
     const newVal = isFn(newValue)
       ? (newValue as (prev: T) => T)(value)
       : newValue;
     if (newVal !== value) {
       value = newVal;
-      subscribers.forEach(fn => fn());
+      if (notify) {
+        subscribers.forEach(fn => fn());
+      }
     }
   }
 
